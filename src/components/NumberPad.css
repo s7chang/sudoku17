@@ -1,0 +1,75 @@
+.number-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.number-pad-row {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: center;
+}
+
+.number-button {
+  width: 50px;
+  height: 50px;
+  font-size: 20px;
+  border: 2px solid #333;
+  background-color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.number-button:hover {
+  background-color: #f0f0f0;
+  transform: scale(1.05);
+}
+
+.number-button:active {
+  transform: scale(0.95);
+}
+
+.number-button.selected {
+  background-color: #1976d2;
+  color: white;
+  border-color: #1976d2;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+}
+
+.clear-button {
+  width: 160px;
+  font-size: 16px;
+}
+
+.mode-toggle-button {
+  width: 50px;
+  height: 50px;
+  font-size: 14px;
+  border: 2px solid #333;
+  background-color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.mode-toggle-button:hover {
+  background-color: #f0f0f0;
+  transform: scale(1.05);
+}
+
+.mode-toggle-button:active {
+  transform: scale(0.95);
+}
+
+.mode-toggle-button.active {
+  background-color: #2196F3;
+  color: white;
+  border-color: #2196F3;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}

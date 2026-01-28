@@ -1,0 +1,239 @@
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.app-header h1 {
+  margin: 0 0 20px 0;
+  font-size: 36px;
+  color: #333;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.difficulty-selector label {
+  font-weight: 500;
+  color: #333;
+}
+
+.difficulty-select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.difficulty-select:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.difficulty-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-button,
+.action-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: 2px solid #333;
+  background-color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.mode-button:hover,
+.action-button:hover {
+  background-color: #f0f0f0;
+}
+
+.mode-button.active {
+  background-color: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.solution-message {
+  text-align: center;
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #4CAF50;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 4px;
+}
+
+.instructions {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.instructions h3 {
+  margin-top: 0;
+}
+
+.instructions ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.instructions li {
+  margin: 5px 0;
+}
+
+.candidate-mode-hint {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  text-align: center;
+  color: #856404;
+}
+
+.generating-message {
+  padding: 40px;
+  text-align: center;
+  font-size: 18px;
+  color: #666;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.hint-count {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  padding: 8px 12px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+}
+
+.elapsed-timer {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1565c0;
+  padding: 8px 12px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+}
+
+
+.puzzle-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  border: 2px solid #4caf50;
+}
+
+.current-puzzle-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.current-puzzle-number {
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.current-puzzle-number.completed {
+  color: #4caf50;
+}
+
+.completed-mark {
+  color: #4caf50;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.puzzle-progress {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.puzzle-number-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.puzzle-number-selector label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.puzzle-number-input {
+  width: 100px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.puzzle-number-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
