@@ -3,7 +3,7 @@ import { SudokuGrid } from './components/SudokuGrid';
 import { NumberPad } from './components/NumberPad';
 import { useGameState } from './hooks/useGameState';
 import { generatePuzzle, isSolved, Difficulty, Grid, countHints, solveSudoku, copyGrid } from './utils/sudoku';
-import { getCachedPuzzle, cachePuzzle, initializeCache } from './utils/puzzleCache';
+import { getCachedPuzzle, cachePuzzle, initializeCache, clearCache } from './utils/puzzleCache';
 import { getRandomKnown17CluePuzzle, getKnown17CluePuzzleByIndex, getTotal17CluePuzzleCount, findPuzzleIndexByGrid, PUZZLE_STATS } from './utils/knownPuzzles';
 import { markPuzzleAsCompleted, isPuzzleCompletedByGrid, isPuzzleCompletedByIndex, getCompletedPuzzleCount, getPuzzleCompletionTime, getPuzzleCompletionTimeByIndex } from './utils/puzzleProgress';
 import { formatTime } from './utils/formatTime';
@@ -23,10 +23,49 @@ function App() {
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState<number | null>(null); // 현재 퍼즐 인덱스 (Expert 난도일 때만)
   const [selectedPuzzleNumber, setSelectedPuzzleNumber] = useState<string>(''); // 선택한 퍼즐 번호 입력
   const [, setCompletedPuzzles] = useState<Set<number>>(new Set()); // 완료한 퍼즐 목록 (상태 업데이트용)
-  const [puzzleStartTime, setPuzzleStartTime] = useState<number | null>(null); // 퍼즐 시작 시간
+  const [puzzleStartTime, setPuzzleStartTime] = useState<number | null>(null); // 퍼즐 시작 시간 (절대 시각)
   const [now, setNow] = useState(() => Date.now()); // 경과 타이머 갱신용
   const [showStats, setShowStats] = useState(false);
   const workerRef = useRef<Worker | null>(null);
+
+  const PUZZLE_TIME_STORAGE_KEY = 'sudoku17_puzzle_time';
+
+  // puzzleStartTime 저장/로드 (시작 시간과 저장 시각을 함께 저장)
+  const savePuzzleTime = useCallback((startTime: number | null) => {
+    try {
+      if (startTime === null) {
+        localStorage.removeItem(PUZZLE_TIME_STORAGE_KEY);
+      } else {
+        localStorage.setItem(PUZZLE_TIME_STORAGE_KEY, JSON.stringify({ 
+          startTime, 
+          savedAt: Date.now() 
+        }));
+      }
+    } catch {
+      // 저장 실패 무시
+    }
+  }, []);
+
+  const loadPuzzleTime = useCallback((): { startTime: number } | null => {
+    try {
+      const stored = localStorage.getItem(PUZZLE_TIME_STORAGE_KEY);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      // 저장된 경과 시간 계산 후 재조정
+      if (parsed.startTime && parsed.savedAt) {
+        const elapsed = parsed.savedAt - parsed.startTime;
+        // 현재 시각에서 경과 시간을 빼서 시작 시간 재조정
+        return { startTime: Date.now() - elapsed };
+      }
+      // 이전 버전 호환성
+      if (parsed.startTime) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
   
   const {
     state,
@@ -62,6 +101,11 @@ function App() {
     }
   }, [puzzleStartTime]);
 
+  // puzzleStartTime 변경 시 저장
+  useEffect(() => {
+    savePuzzleTime(puzzleStartTime);
+  }, [puzzleStartTime, savePuzzleTime]);
+
   // 캐시 초기화 (알려진 17개 힌트 퍼즐들 추가)
   useEffect(() => {
     try {
@@ -82,7 +126,14 @@ function App() {
       if (!hasSavedGame) {
         loadPuzzleWithCache(difficulty);
       } else {
-        setPuzzleStartTime(Date.now()); // 재개 시 타이머 시작
+        // 저장된 시간 정보 로드
+        const savedTime = loadPuzzleTime();
+        if (savedTime) {
+          // 저장된 시작 시간을 그대로 사용 (이전 경과 시간이 이미 반영됨)
+          setPuzzleStartTime(savedTime.startTime);
+        } else {
+          setPuzzleStartTime(Date.now());
+        }
         if (difficulty === 'expert') {
           const puzzleIndex = findPuzzleIndexByGrid(state.initialGrid);
           if (puzzleIndex >= 0) {
@@ -105,7 +156,7 @@ function App() {
       console.log(`퍼즐 #${index + 1} 로드: ${hintCount}개 힌트`);
       loadNewPuzzle(puzzle);
       setCurrentPuzzleIndex(index);
-      setPuzzleStartTime(Date.now()); // 시작 시간 기록
+      setPuzzleStartTime(Date.now());
       cachePuzzle(difficulty, puzzle);
       setIsGenerating(false);
     } else {
@@ -125,10 +176,10 @@ function App() {
         // 퍼즐 인덱스 찾기
         const puzzleIndex = findPuzzleIndexByGrid(knownPuzzle);
         setCurrentPuzzleIndex(puzzleIndex >= 0 ? puzzleIndex : null);
-        setPuzzleStartTime(Date.now()); // 시작 시간 기록
+        setPuzzleStartTime(Date.now());
         console.log(`알려진 17개 힌트 퍼즐 로드: ${hintCount}개 힌트${puzzleIndex >= 0 ? ` (#${puzzleIndex + 1})` : ''}`);
         loadNewPuzzle(knownPuzzle);
-        cachePuzzle(targetDifficulty, knownPuzzle); // 캐시에도 저장
+        cachePuzzle(targetDifficulty, knownPuzzle);
         setIsGenerating(false);
         return;
       }
@@ -139,7 +190,7 @@ function App() {
     if (cached) {
       const hintCount = countHints(cached);
       console.log(`캐시에서 ${targetDifficulty} 난도 퍼즐 로드: ${hintCount}개 힌트`);
-      setPuzzleStartTime(Date.now());
+              setPuzzleStartTime(Date.now());
       loadNewPuzzle(cached);
       setIsGenerating(false);
       return;
@@ -185,7 +236,7 @@ function App() {
         // 퍼즐 인덱스 찾기
         const puzzleIndex = findPuzzleIndexByGrid(knownPuzzle);
         setCurrentPuzzleIndex(puzzleIndex >= 0 ? puzzleIndex : null);
-        setPuzzleStartTime(Date.now()); // 시작 시간 기록
+        setPuzzleStartTime(Date.now());
         console.log(`새 게임 - 알려진 17개 힌트 퍼즐 로드: ${hintCount}개 힌트${puzzleIndex >= 0 ? ` (#${puzzleIndex + 1})` : ''}`);
         loadNewPuzzle(knownPuzzle);
         setIsGenerating(false);
@@ -199,10 +250,10 @@ function App() {
         const puzzle = generatePuzzle(difficulty, true);
         const hintCount = countHints(puzzle);
         setCurrentPuzzleIndex(null);
-        setPuzzleStartTime(Date.now()); // 시작 시간 기록
+        setPuzzleStartTime(Date.now());
         console.log(`새 게임 - ${difficulty} 난도 퍼즐 생성 완료: ${hintCount}개 힌트`);
         loadNewPuzzle(puzzle);
-        cachePuzzle(difficulty, puzzle); // 캐시에도 저장
+        cachePuzzle(difficulty, puzzle);
         setIsGenerating(false);
       } catch (error) {
         console.error('퍼즐 생성 오류:', error);
@@ -306,12 +357,19 @@ function App() {
           }
         }
 
+        // 완료 시 캐시 비우기
+        clearCache(difficulty);
+        savePuzzleTime(null); // 시간 정보도 초기화
+
         const timeStr = formatTime(completionTime);
         setTimeout(() => {
           alert(`축하합니다! 스도쿠를 완성했습니다!\n소요 시간: ${timeStr}${beatRecord ? '\n기록 갱신!' : ''}`);
         }, 100);
       } else if (puzzleStartTime !== null) {
-        const timeStr = formatTime(Date.now() - puzzleStartTime);
+        const completionTime = Date.now() - puzzleStartTime;
+        clearCache(difficulty);
+        savePuzzleTime(null);
+        const timeStr = formatTime(completionTime);
         setTimeout(() => alert(`축하합니다! 스도쿠를 완성했습니다!\n소요 시간: ${timeStr}`), 100);
       } else {
         setTimeout(() => alert('축하합니다! 스도쿠를 완성했습니다!'), 100);
@@ -323,17 +381,18 @@ function App() {
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1>Sudoku 17</h1>
-        <div className="controls">
+      <aside className="app-sidebar">
+        <h1 className="sidebar-title">Sudoku 17</h1>
+
+        <div className="sidebar-section">
           <div className="difficulty-selector">
-            <label htmlFor="difficulty">난도:</label>
+            <label htmlFor="difficulty">난도</label>
             <select
               id="difficulty"
               value={difficulty}
               onChange={(e) => {
                 setDifficulty(e.target.value as Difficulty);
-                setCurrentPuzzleIndex(null); // 난도 변경 시 인덱스 초기화
+                setCurrentPuzzleIndex(null);
                 setSelectedPuzzleNumber('');
               }}
               disabled={isGenerating}
@@ -345,182 +404,174 @@ function App() {
               <option value="expert">최고 난도 (17개 힌트)</option>
             </select>
           </div>
-          {!isGenerating && puzzleStartTime != null && !isSolved(state.currentGrid) && (
+        </div>
+
+        {!isGenerating && puzzleStartTime != null && !isSolved(state.currentGrid) && (
+          <div className="sidebar-section">
             <div className="timer-display" role="timer" aria-live="polite">
               경과: {formatTime(Math.max(0, now - puzzleStartTime))}
             </div>
-          )}
-          {difficulty === 'expert' && (
-            <div className="puzzle-selector">
-              <div className="current-puzzle-info">
-                {(() => {
-                  let puzzleIndex = currentPuzzleIndex;
-                  if (puzzleIndex === null && state.initialGrid.some(row => row.some(cell => cell !== 0))) {
-                    puzzleIndex = findPuzzleIndexByGrid(state.initialGrid);
-                    if (puzzleIndex >= 0) {
-                      setCurrentPuzzleIndex(puzzleIndex);
-                    }
-                  }
-                  const isCompleted = puzzleIndex !== null && puzzleIndex >= 0
-                    ? isPuzzleCompletedByIndex(puzzleIndex)
-                    : isPuzzleCompletedByGrid(state.initialGrid);
-                  const completionTime = puzzleIndex !== null && puzzleIndex >= 0
-                    ? getPuzzleCompletionTimeByIndex(puzzleIndex)
-                    : getPuzzleCompletionTime(state.initialGrid);
-                  return (
-                    <>
-                      {puzzleIndex !== null && puzzleIndex >= 0 && (
-                        <span className={`current-puzzle-number ${isCompleted ? 'completed' : ''}`}>
-                          현재: #{puzzleIndex + 1}
-                          {isCompleted && (
-                            <span className="completed-mark">
-                              {' '}(풀어봄{completionTime !== null ? ` - ${formatTime(completionTime)}` : ''})
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      <span className="puzzle-progress">
-                        완료: {getCompletedPuzzleCount()}/{getTotal17CluePuzzleCount()}
+          </div>
+        )}
+
+        {difficulty === 'expert' && (
+          <div className="sidebar-section puzzle-selector">
+            <div className="current-puzzle-info">
+              {(() => {
+                let puzzleIndex = currentPuzzleIndex;
+                if (puzzleIndex === null && state.initialGrid.some(row => row.some(cell => cell !== 0))) {
+                  puzzleIndex = findPuzzleIndexByGrid(state.initialGrid);
+                  if (puzzleIndex >= 0) setCurrentPuzzleIndex(puzzleIndex);
+                }
+                const isCompleted = puzzleIndex !== null && puzzleIndex >= 0
+                  ? isPuzzleCompletedByIndex(puzzleIndex)
+                  : isPuzzleCompletedByGrid(state.initialGrid);
+                const completionTime = puzzleIndex !== null && puzzleIndex >= 0
+                  ? getPuzzleCompletionTimeByIndex(puzzleIndex)
+                  : getPuzzleCompletionTime(state.initialGrid);
+                return (
+                  <>
+                    {puzzleIndex !== null && puzzleIndex >= 0 && (
+                      <span className={`current-puzzle-number ${isCompleted ? 'completed' : ''}`}>
+                        현재: #{puzzleIndex + 1}
+                        {isCompleted && (
+                          <span className="completed-mark">
+                            {' '}(풀어봄{completionTime !== null ? ` - ${formatTime(completionTime)}` : ''})
+                          </span>
+                        )}
                       </span>
-                    </>
-                  );
-                })()}
-              </div>
-              <div className="puzzle-number-selector">
-                <label htmlFor="puzzle-number">다른 번호로 이동:</label>
-                <input
-                  id="puzzle-number"
-                  type="number"
-                  min="1"
-                  max={getTotal17CluePuzzleCount()}
-                  value={selectedPuzzleNumber}
-                  onChange={(e) => setSelectedPuzzleNumber(e.target.value)}
-                  placeholder="번호 입력"
-                  className="puzzle-number-input"
-                  disabled={isGenerating}
-                />
-                <button
-                  className="action-button"
-                  onClick={() => {
-                    const num = parseInt(selectedPuzzleNumber, 10);
-                    if (num >= 1 && num <= getTotal17CluePuzzleCount()) {
-                      loadPuzzleByIndex(num - 1); // 0-based index
-                      setSelectedPuzzleNumber('');
-                    } else {
-                      alert(`1-${getTotal17CluePuzzleCount()} 범위의 번호를 입력하세요.`);
-                    }
-                  }}
-                  disabled={isGenerating || !selectedPuzzleNumber}
-                >
-                  이동
-                </button>
-              </div>
+                    )}
+                    <span className="puzzle-progress">
+                      완료: {getCompletedPuzzleCount()}/{getTotal17CluePuzzleCount()}
+                    </span>
+                  </>
+                );
+              })()}
             </div>
-          )}
-          <button className="action-button" onClick={fillAllCandidates}>
-            후보 전부 기입
-          </button>
+            <div className="puzzle-number-selector">
+              <label htmlFor="puzzle-number">번호로 이동</label>
+              <input
+                id="puzzle-number"
+                type="number"
+                min="1"
+                max={getTotal17CluePuzzleCount()}
+                value={selectedPuzzleNumber}
+                onChange={(e) => setSelectedPuzzleNumber(e.target.value)}
+                placeholder="번호"
+                className="puzzle-number-input"
+                disabled={isGenerating}
+              />
+              <button
+                className="action-button"
+                onClick={() => {
+                  const num = parseInt(selectedPuzzleNumber, 10);
+                  if (num >= 1 && num <= getTotal17CluePuzzleCount()) {
+                    loadPuzzleByIndex(num - 1);
+                    setSelectedPuzzleNumber('');
+                  } else {
+                    alert(`1-${getTotal17CluePuzzleCount()} 범위의 번호를 입력하세요.`);
+                  }
+                }}
+                disabled={isGenerating || !selectedPuzzleNumber}
+              >
+                이동
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="sidebar-section">
+          <span className="hint-count">
+            힌트: {state.initialGrid.reduce((sum, row) =>
+              sum + row.filter(cell => cell !== 0).length, 0
+            )}개
+          </span>
+        </div>
+
+        <div className="sidebar-section sidebar-actions">
           <button className="action-button" onClick={undo} disabled={state.historyIndex <= 0}>
             Undo
           </button>
-          <button 
-            className="action-button" 
-            onClick={redo} 
-            disabled={state.historyIndex >= state.history.length - 1}
-          >
+          <button className="action-button" onClick={redo} disabled={state.historyIndex >= state.history.length - 1}>
             Redo
           </button>
-          <button 
-            className="action-button" 
+          <button
+            className="action-button"
             onClick={() => {
               restartPuzzle();
-              setPuzzleStartTime(Date.now()); // 다시 풀기 시 시작 시간 리셋
+              setPuzzleStartTime(Date.now());
             }}
           >
             다시 풀기
           </button>
-          <button 
-            className={`action-button ${showAnswer ? 'active' : ''}`}
-            onClick={handleShowAnswer}
-          >
+          <button className={`action-button ${showAnswer ? 'active' : ''}`} onClick={handleShowAnswer}>
             {showAnswer ? '해답 숨기기' : '해답 보기'}
           </button>
-          <button 
-            className="action-button" 
-            onClick={generateNewGame}
-            disabled={isGenerating}
-          >
+          <button className="action-button" onClick={generateNewGame} disabled={isGenerating}>
             {isGenerating ? '생성 중...' : '새 게임'}
           </button>
-          <button 
-            className="action-button" 
-            onClick={() => setShowStats(true)}
-          >
+          <button className="action-button" onClick={() => setShowStats(true)}>
             통계
           </button>
         </div>
-      </div>
+      </aside>
 
-      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
+      <main className="app-main">
+        {showStats && <StatsModal onClose={() => setShowStats(false)} />}
 
-      <div className="game-container">
-        {isGenerating ? (
-          <div className="generating-message">
-            퍼즐을 생성하는 중입니다... (최고 난도는 시간이 걸릴 수 있습니다)
-          </div>
-        ) : (
-          <>
-            <div className="game-meta">
-              <span className="hint-count">
-                힌트: {state.initialGrid.reduce((sum, row) => 
-                  sum + row.filter(cell => cell !== 0).length, 0
-                )}개
-              </span>
+        <div className="game-container">
+          {isGenerating ? (
+            <div className="generating-message">
+              퍼즐을 생성하는 중입니다...
             </div>
-        <SudokuGrid
-          initialGrid={state.initialGrid}
-          currentGrid={showAnswer && solvedGrid ? solvedGrid : state.currentGrid}
-          candidates={state.candidates}
-          candidateMode={candidateMode}
-          selectedCandidateNum={selectedNumber}
-          showAnswer={showAnswer}
-          onCellClick={handleCellClick}
-          onCellToggleCandidate={toggleCandidate}
-        />
-          </>
-        )}
-        
-        <NumberPad
-          onNumberClick={handleNumberClick}
-          onClear={handleClear}
-          selectedNumber={selectedNumber}
-          candidateMode={candidateMode}
-          onToggleMode={() => setCandidateMode(!candidateMode)}
-        />
-        
-        {selectedNumber ? (
-          <div className="candidate-mode-hint">
-            {candidateMode ? `후보 ${selectedNumber}` : `숫자 ${selectedNumber}`} 선택됨 - 
-            {candidateMode ? ' 드래그하여 표시/해제' : ' 셀을 클릭하여 입력'}
-          </div>
-        ) : null}
-      </div>
-
-      {showSolution && (
-        <div className="solution-message">
-          완성되었습니다!
+          ) : (
+            <>
+              <SudokuGrid
+                initialGrid={state.initialGrid}
+                currentGrid={showAnswer && solvedGrid ? solvedGrid : state.currentGrid}
+                candidates={state.candidates}
+                candidateMode={candidateMode}
+                selectedCandidateNum={selectedNumber}
+                showAnswer={showAnswer}
+                onCellClick={handleCellClick}
+                onCellToggleCandidate={toggleCandidate}
+              />
+              <div className="number-pad-wrap">
+                <NumberPad
+                  onNumberClick={handleNumberClick}
+                  onClear={handleClear}
+                  selectedNumber={selectedNumber}
+                  candidateMode={candidateMode}
+                  onToggleMode={() => setCandidateMode(!candidateMode)}
+                />
+                <button className="fill-candidates-button" onClick={fillAllCandidates}>
+                  후보 전부 기입
+                </button>
+              </div>
+              {selectedNumber ? (
+                <div className="candidate-mode-hint">
+                  {candidateMode ? `후보 ${selectedNumber}` : `숫자 ${selectedNumber}`} 선택됨 —
+                  {candidateMode ? ' 드래그하여 표시/해제' : ' 셀을 클릭하여 입력'}
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
-      )}
 
-      <div className="instructions">
-        <h3>사용 방법:</h3>
-        <ul>
-          <li>셀을 클릭한 후 숫자 패드로 숫자를 입력하세요</li>
-          <li>후보 모드에서 후보 버튼을 누른 후 클릭&드래그로 후보를 표시/해제할 수 있습니다</li>
-          <li>후보 전부 기입 버튼으로 모든 가능한 후보를 자동으로 채울 수 있습니다</li>
-          <li>Undo/Redo로 이전 상태로 돌아갈 수 있습니다</li>
+        {showSolution && (
+          <div className="solution-message">완성되었습니다!</div>
+        )}
+      </main>
+
+      <aside className="app-right-panel">
+        <h3 className="right-panel-title">사용 방법</h3>
+        <ul className="right-panel-list">
+          <li>셀 클릭 후 숫자 패드로 입력</li>
+          <li>후보 모드: 버튼 누른 뒤 클릭·드래그로 표시/해제</li>
+          <li>후보 전부 기입으로 자동 채우기</li>
+          <li>Undo/Redo로 되돌리기</li>
         </ul>
-      </div>
+      </aside>
     </div>
   );
 }

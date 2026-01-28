@@ -1,44 +1,55 @@
 .app {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+  display: flex;
+  min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
 }
 
-.app-header {
-  text-align: center;
-  margin-bottom: 30px;
+.app-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 20px 16px;
+  background: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
 }
 
-.app-header h1 {
+.sidebar-title {
   margin: 0 0 20px 0;
-  font-size: 36px;
+  font-size: 22px;
   color: #333;
+  text-align: center;
 }
 
-.controls {
+.sidebar-section {
+  margin-bottom: 20px;
+}
+
+.sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-actions {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .difficulty-selector {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .difficulty-selector label {
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  font-size: 13px;
+  color: #555;
 }
 
 .difficulty-select {
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: 14px;
   border: 2px solid #333;
   border-radius: 4px;
@@ -58,8 +69,8 @@
 
 .mode-button,
 .action-button {
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 10px 14px;
+  font-size: 14px;
   border: 2px solid #333;
   background-color: #fff;
   cursor: pointer;
@@ -67,12 +78,12 @@
   transition: all 0.2s;
 }
 
-.mode-button:hover,
 .action-button:hover {
   background-color: #f0f0f0;
 }
 
-.mode-button.active {
+.mode-button.active,
+.action-button.active {
   background-color: #2196F3;
   color: white;
   border-color: #2196F3;
@@ -83,11 +94,70 @@
   cursor: not-allowed;
 }
 
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-width: 0;
+}
+
 .game-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
+}
+
+.number-pad-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.fill-candidates-button {
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 2px solid #333;
+  background-color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.fill-candidates-button:hover {
+  background-color: #f0f0f0;
+}
+
+.app-right-panel {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 20px 16px;
+  background: #fafafa;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+}
+
+.right-panel-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.right-panel-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.right-panel-list li {
+  margin: 6px 0;
 }
 
 .solution-message {
@@ -99,26 +169,6 @@
   font-size: 20px;
   font-weight: bold;
   border-radius: 4px;
-}
-
-.instructions {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-}
-
-.instructions h3 {
-  margin-top: 0;
-}
-
-.instructions ul {
-  margin: 10px 0;
-  padding-left: 20px;
-}
-
-.instructions li {
-  margin: 5px 0;
 }
 
 .candidate-mode-hint {
@@ -145,72 +195,61 @@
 }
 
 .timer-display {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #0d47a1;
-  padding: 10px 16px;
+  padding: 10px 12px;
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   border: 2px solid #1976d2;
   border-radius: 8px;
-  min-width: 140px;
   text-align: center;
 }
 
-.game-meta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
 .hint-count {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
   color: #333;
-  padding: 8px 12px;
+  padding: 8px 10px;
   background-color: #e3f2fd;
   border-radius: 4px;
+  display: inline-block;
 }
 
-
-.puzzle-selector {
+.app-sidebar .puzzle-selector {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 12px;
   background-color: #e8f5e9;
-  border-radius: 4px;
-  border: 2px solid #4caf50;
+  border-radius: 6px;
+  border: 1px solid #a5d6a7;
 }
 
 .current-puzzle-info {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .current-puzzle-number {
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
   font-weight: 600;
 }
 
 .current-puzzle-number.completed {
-  color: #4caf50;
+  color: #2e7d32;
 }
 
 .completed-mark {
-  color: #4caf50;
-  font-weight: bold;
-  font-size: 14px;
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .puzzle-progress {
-  font-size: 14px;
-  color: #333;
+  font-size: 13px;
+  color: #555;
   font-weight: 500;
 }
 
@@ -222,14 +261,14 @@
 }
 
 .puzzle-number-selector label {
-  font-weight: 500;
-  color: #333;
-  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  font-size: 13px;
 }
 
 .puzzle-number-input {
-  width: 100px;
-  padding: 6px 10px;
+  width: 70px;
+  padding: 6px 8px;
   font-size: 14px;
   border: 2px solid #333;
   border-radius: 4px;
@@ -240,3 +279,4 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
