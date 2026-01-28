@@ -55,6 +55,13 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
+  // puzzleStartTime이 설정될 때 now도 동기화
+  useEffect(() => {
+    if (puzzleStartTime !== null) {
+      setNow(Date.now());
+    }
+  }, [puzzleStartTime]);
+
   // 캐시 초기화 (알려진 17개 힌트 퍼즐들 추가)
   useEffect(() => {
     try {
@@ -338,6 +345,11 @@ function App() {
               <option value="expert">최고 난도 (17개 힌트)</option>
             </select>
           </div>
+          {!isGenerating && puzzleStartTime != null && !isSolved(state.currentGrid) && (
+            <div className="timer-display" role="timer" aria-live="polite">
+              경과: {formatTime(Math.max(0, now - puzzleStartTime))}
+            </div>
+          )}
           {difficulty === 'expert' && (
             <div className="puzzle-selector">
               <div className="current-puzzle-info">
@@ -464,11 +476,6 @@ function App() {
                   sum + row.filter(cell => cell !== 0).length, 0
                 )}개
               </span>
-              {puzzleStartTime != null && !isSolved(state.currentGrid) && (
-                <span className="elapsed-timer">
-                  경과: {formatTime(now - puzzleStartTime)}
-                </span>
-              )}
             </div>
         <SudokuGrid
           initialGrid={state.initialGrid}
