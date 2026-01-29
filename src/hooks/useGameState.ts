@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   Grid, 
   CandidateGrid, 
@@ -32,7 +32,7 @@ function createInitialState(initialGrid?: Grid): GameState {
   };
 }
 
-function loadStateFromStorage(): GameState | null {
+function loadStateFromStorage(): { state: GameState; puzzleStartTime: number | null } | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
@@ -45,7 +45,7 @@ function loadStateFromStorage(): GameState | null {
       manuallyRemovedCandidates: new Set(h.manuallyRemovedCandidates || []),
     }));
     
-    return {
+    const state: GameState = {
       ...parsed,
       manuallyRemovedCandidates: new Set(parsed.manuallyRemovedCandidates || []),
       history: history.length > 0 ? history : [{
@@ -54,12 +54,18 @@ function loadStateFromStorage(): GameState | null {
         manuallyRemovedCandidates: new Set(),
       }],
     };
+    // 창을 닫을 때 저장된 정지 시점 경과 시간이 있으면 그 시점부터 다시 흐르게
+    const pausedElapsed = parsed.pausedElapsed != null ? parsed.pausedElapsed : null;
+    const puzzleStartTime = pausedElapsed != null
+      ? Date.now() - pausedElapsed
+      : (parsed.puzzleStartTime != null ? parsed.puzzleStartTime : null);
+    return { state, puzzleStartTime };
   } catch {
     return null;
   }
 }
 
-function saveStateToStorage(state: GameState): void {
+function saveStateToStorage(state: GameState, puzzleStartTime: number | null, pausedElapsed: number | null = null): void {
   try {
     const toStore = {
       ...state,
@@ -69,6 +75,8 @@ function saveStateToStorage(state: GameState): void {
         candidates: h.candidates,
         manuallyRemovedCandidates: Array.from(h.manuallyRemovedCandidates),
       })),
+      puzzleStartTime,
+      pausedElapsed: pausedElapsed ?? null,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
   } catch {
@@ -79,17 +87,34 @@ function saveStateToStorage(state: GameState): void {
 export function useGameState(initialGrid?: Grid) {
   const [state, setState] = useState<GameState>(() => {
     const loaded = loadStateFromStorage();
-    // 저장된 게임이 있고 유효하면 사용, 아니면 새로 생성
-    if (loaded && loaded.initialGrid && loaded.initialGrid.some(row => row.some(cell => cell !== 0))) {
-      return loaded;
+    if (loaded && loaded.state.initialGrid && loaded.state.initialGrid.some(row => row.some(cell => cell !== 0))) {
+      return loaded.state;
     }
     return createInitialState(initialGrid);
   });
 
-  // 상태가 변경될 때마다 저장
+  const [puzzleStartTime, setPuzzleStartTime] = useState<number | null>(() => {
+    const loaded = loadStateFromStorage();
+    if (loaded && loaded.state.initialGrid && loaded.state.initialGrid.some(row => row.some(cell => cell !== 0))) {
+      return loaded.puzzleStartTime;
+    }
+    return null;
+  });
+
+  const stateRef = useRef(state);
+  const puzzleStartTimeRef = useRef(puzzleStartTime);
+  stateRef.current = state;
+  puzzleStartTimeRef.current = puzzleStartTime;
+
+  // 상태·시간이 변경될 때마다 함께 저장 (pausedElapsed는 null로 저장해 정지 시점 경과는 한 번만 적용)
   useEffect(() => {
-    saveStateToStorage(state);
-  }, [state]);
+    saveStateToStorage(state, puzzleStartTime);
+  }, [state, puzzleStartTime]);
+
+  // 창을 닫을 때 정지 시점 경과 시간을 저장 (다시 열면 그 시점부터 이어감)
+  const setPausedElapsed = useCallback((elapsed: number) => {
+    saveStateToStorage(stateRef.current, puzzleStartTimeRef.current, elapsed);
+  }, []);
 
   const dispatch = useCallback((action: GameAction) => {
     setState(prev => {
@@ -346,6 +371,9 @@ export function useGameState(initialGrid?: Grid) {
 
   return {
     state,
+    puzzleStartTime,
+    setPuzzleStartTime,
+    setPausedElapsed,
     setValue,
     clearValue,
     toggleCandidate,

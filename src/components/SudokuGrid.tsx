@@ -9,6 +9,7 @@ interface SudokuGridProps {
   candidates: CandidateGrid;
   candidateMode: boolean;
   selectedCandidateNum: number | null; // 선택된 번호 (후보 모드 또는 숫자 모드)
+  selectedCell: [number, number] | null; // 선택된 셀 (부모에서 제어, 새 게임 시 초기화)
   showAnswer?: boolean; // 해답 보기 모드
   onCellClick: (row: number, col: number) => void;
   onCellToggleCandidate: (row: number, col: number, candidateNum: number) => void;
@@ -20,11 +21,11 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
   candidates,
   candidateMode,
   selectedCandidateNum,
+  selectedCell,
   showAnswer = false,
   onCellClick,
   onCellToggleCandidate,
 }) => {
-  const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<[number, number] | null>(null);
 
@@ -38,7 +39,6 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
       // 후보 모드에서는 클릭만으로는 후보 변경하지 않음 (드래그로 처리)
       return;
     }
-    setSelectedCell([row, col]);
     onCellClick(row, col);
   }, [candidateMode, initialGrid, onCellClick]);
 

@@ -23,52 +23,16 @@ function App() {
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState<number | null>(null); // 현재 퍼즐 인덱스 (Expert 난도일 때만)
   const [selectedPuzzleNumber, setSelectedPuzzleNumber] = useState<string>(''); // 선택한 퍼즐 번호 입력
   const [, setCompletedPuzzles] = useState<Set<number>>(new Set()); // 완료한 퍼즐 목록 (상태 업데이트용)
-  const [puzzleStartTime, setPuzzleStartTime] = useState<number | null>(null); // 퍼즐 시작 시간 (절대 시각)
   const [now, setNow] = useState(() => Date.now()); // 경과 타이머 갱신용
   const [showStats, setShowStats] = useState(false);
   const workerRef = useRef<Worker | null>(null);
+  const pausedElapsedRef = useRef<number | null>(null);
 
-  const PUZZLE_TIME_STORAGE_KEY = 'sudoku17_puzzle_time';
-
-  // puzzleStartTime 저장/로드 (시작 시간과 저장 시각을 함께 저장)
-  const savePuzzleTime = useCallback((startTime: number | null) => {
-    try {
-      if (startTime === null) {
-        localStorage.removeItem(PUZZLE_TIME_STORAGE_KEY);
-      } else {
-        localStorage.setItem(PUZZLE_TIME_STORAGE_KEY, JSON.stringify({ 
-          startTime, 
-          savedAt: Date.now() 
-        }));
-      }
-    } catch {
-      // 저장 실패 무시
-    }
-  }, []);
-
-  const loadPuzzleTime = useCallback((): { startTime: number } | null => {
-    try {
-      const stored = localStorage.getItem(PUZZLE_TIME_STORAGE_KEY);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      // 저장된 경과 시간 계산 후 재조정
-      if (parsed.startTime && parsed.savedAt) {
-        const elapsed = parsed.savedAt - parsed.startTime;
-        // 현재 시각에서 경과 시간을 빼서 시작 시간 재조정
-        return { startTime: Date.now() - elapsed };
-      }
-      // 이전 버전 호환성
-      if (parsed.startTime) {
-        return parsed;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-  
   const {
     state,
+    puzzleStartTime,
+    setPuzzleStartTime,
+    setPausedElapsed,
     setValue,
     clearValue,
     toggleCandidate,
@@ -101,19 +65,25 @@ function App() {
     }
   }, [puzzleStartTime]);
 
-  // puzzleStartTime 변경 시 저장
+  // 탭/창이 숨겨지면 타이머 정지(경과 시간 저장), 다시 보이면 그 시점부터 이어가기
   useEffect(() => {
-    savePuzzleTime(puzzleStartTime);
-  }, [puzzleStartTime, savePuzzleTime]);
-
-  // 플레이 중 경과 시간 주기적 저장 (매 초 savedAt 갱신)
-  useEffect(() => {
-    if (puzzleStartTime === null) return;
-    const id = setInterval(() => {
-      savePuzzleTime(puzzleStartTime);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [puzzleStartTime, savePuzzleTime]);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (puzzleStartTime !== null) {
+          const elapsed = Date.now() - puzzleStartTime;
+          pausedElapsedRef.current = elapsed;
+          setPausedElapsed(elapsed); // 창을 닫아도 다시 열면 이 경과 시간부터 복원
+        }
+      } else {
+        if (pausedElapsedRef.current !== null && puzzleStartTime !== null) {
+          setPuzzleStartTime(Date.now() - pausedElapsedRef.current);
+          pausedElapsedRef.current = null;
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [puzzleStartTime, setPuzzleStartTime, setPausedElapsed]);
 
   // 캐시 초기화 (알려진 17개 힌트 퍼즐들 추가)
   useEffect(() => {
@@ -135,14 +105,7 @@ function App() {
       if (!hasSavedGame) {
         loadPuzzleWithCache(difficulty);
       } else {
-        // 저장된 시간 정보 로드
-        const savedTime = loadPuzzleTime();
-        if (savedTime) {
-          // 저장된 시작 시간을 그대로 사용 (이전 경과 시간이 이미 반영됨)
-          setPuzzleStartTime(savedTime.startTime);
-        } else {
-          setPuzzleStartTime(Date.now());
-        }
+        // 저장된 게임은 useGameState에서 시간까지 함께 로드됨
         if (difficulty === 'expert') {
           const puzzleIndex = findPuzzleIndexByGrid(state.initialGrid);
           if (puzzleIndex >= 0) {
@@ -160,6 +123,8 @@ function App() {
     
     const puzzle = getKnown17CluePuzzleByIndex(index);
     if (puzzle) {
+      setSelectedNumber(null);
+      setSelectedCell(null);
       setIsGenerating(true);
       const hintCount = countHints(puzzle);
       console.log(`퍼즐 #${index + 1} 로드: ${hintCount}개 힌트`);
@@ -175,6 +140,8 @@ function App() {
 
   // 캐시를 사용하여 퍼즐 로드
   const loadPuzzleWithCache = useCallback((targetDifficulty: Difficulty) => {
+    setSelectedNumber(null);
+    setSelectedCell(null);
     setIsGenerating(true);
     
     // 최고 난도(17개 힌트)인 경우, 알려진 퍼즐에서 먼저 시도
@@ -233,6 +200,7 @@ function App() {
 
   // 새 게임 생성 (항상 랜덤)
   const generateNewGame = useCallback(() => {
+    setSelectedNumber(null);
     setSelectedCell(null);
     setSelectedPuzzleNumber('');
     setIsGenerating(true);
@@ -343,6 +311,7 @@ function App() {
 
   // 풀이 확인 및 완료 기록
   useEffect(() => {
+    if (isGenerating) return;
     if (isSolved(state.currentGrid)) {
       setShowSolution(true);
       
@@ -368,7 +337,6 @@ function App() {
 
         // 완료 시 캐시 비우기 및 타이머 초기화
         clearCache(difficulty);
-        savePuzzleTime(null);
         setPuzzleStartTime(null);
 
         const timeStr = formatTime(completionTime);
@@ -378,17 +346,14 @@ function App() {
       } else if (puzzleStartTime !== null) {
         const completionTime = Date.now() - puzzleStartTime;
         clearCache(difficulty);
-        savePuzzleTime(null);
         setPuzzleStartTime(null);
         const timeStr = formatTime(completionTime);
         setTimeout(() => alert(`축하합니다! 스도쿠를 완성했습니다!\n소요 시간: ${timeStr}`), 100);
-      } else {
-        setTimeout(() => alert('축하합니다! 스도쿠를 완성했습니다!'), 100);
       }
     } else {
       setShowSolution(false);
     }
-  }, [state.currentGrid, state.initialGrid, difficulty, currentPuzzleIndex, puzzleStartTime]);
+  }, [state.currentGrid, state.initialGrid, difficulty, currentPuzzleIndex, puzzleStartTime, isGenerating]);
 
   return (
     <div className="app">
@@ -402,9 +367,11 @@ function App() {
               id="difficulty"
               value={difficulty}
               onChange={(e) => {
-                setDifficulty(e.target.value as Difficulty);
+                const newDifficulty = e.target.value as Difficulty;
+                setDifficulty(newDifficulty);
                 setCurrentPuzzleIndex(null);
                 setSelectedPuzzleNumber('');
+                loadPuzzleWithCache(newDifficulty);
               }}
               disabled={isGenerating}
               className="difficulty-select"
@@ -543,6 +510,7 @@ function App() {
                 candidates={state.candidates}
                 candidateMode={candidateMode}
                 selectedCandidateNum={selectedNumber}
+                selectedCell={selectedCell}
                 showAnswer={showAnswer}
                 onCellClick={handleCellClick}
                 onCellToggleCandidate={toggleCandidate}
@@ -565,12 +533,6 @@ function App() {
                   return s;
                 })()}
               />
-              {selectedNumber ? (
-                <div className="candidate-mode-hint">
-                  {candidateMode ? `후보 ${selectedNumber}` : `숫자 ${selectedNumber}`} 선택됨 —
-                  {candidateMode ? ' 드래그하여 표시/해제' : ' 셀을 클릭하여 입력'}
-                </div>
-              ) : null}
             </>
           )}
         </div>
@@ -581,12 +543,13 @@ function App() {
       </main>
 
       <aside className="app-right-panel">
-        <h3 className="right-panel-title">사용 방법</h3>
+        <h3 className="right-panel-title">게임 방법</h3>
         <ul className="right-panel-list">
-          <li>셀 클릭 후 숫자 패드로 입력</li>
-          <li>후보 모드: 버튼 누른 뒤 클릭·드래그로 표시/해제</li>
-          <li>후보 전부 기입으로 자동 채우기</li>
-          <li>Undo/Redo로 되돌리기</li>
+          <li>숫자 모드: 1~9 버튼 누른 뒤 셀 클릭으로 입력 (또는 셀 클릭 후 숫자 버튼)</li>
+          <li>후보 모드: [후보]로 전환한 뒤 숫자 버튼 누르고, 셀 클릭·드래그로 해당 후보 표시/해제</li>
+          <li>[전부] 버튼으로 빈 칸에 후보 일괄 채우기</li>
+          <li>[지우기]로 선택한 셀 비우기</li>
+          <li>Undo·Redo 버튼으로 되돌리기</li>
         </ul>
       </aside>
     </div>

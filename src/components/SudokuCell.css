@@ -22,7 +22,7 @@
 }
 
 .sudoku-cell.has-selected-candidate {
-  background-color: #fff9c4;
+  background-color: #ffd54f;
 }
 
 .cell-value {
