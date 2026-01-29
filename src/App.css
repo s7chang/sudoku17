@@ -111,27 +111,6 @@
   gap: 20px;
 }
 
-.number-pad-wrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.fill-candidates-button {
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 2px solid #333;
-  background-color: #fff;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.fill-candidates-button:hover {
-  background-color: #f0f0f0;
-}
-
 .app-right-panel {
   width: 220px;
   flex-shrink: 0;

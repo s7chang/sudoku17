@@ -360,41 +360,57 @@ export function calculateCandidates(grid: Grid, row: number, col: number): boole
   return candidates;
 }
 
-// 모든 후보 자동 계산
+// 모든 후보 자동 계산 (전부 버튼용)
 export function calculateAllCandidates(
   grid: Grid,
-  existingCandidates: CandidateGrid, // 사용하지 않지만 호환성을 위해 유지
-  manuallyRemoved: Set<string> // "row,col,num" 형식
+  existingCandidates: CandidateGrid,
+  manuallyRemoved: Set<string>
 ): CandidateGrid {
   const newCandidates = createCandidateGrid();
-  
-  // 모든 셀에 대해 후보를 새로 계산
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (grid[r][c] === 0) {
-        // 현재 그리드 상태를 기반으로 가능한 후보 계산
         const autoCandidates = calculateCandidates(grid, r, c);
         for (let num = 1; num <= 9; num++) {
           const key = `${r},${c},${num}`;
-          // 자동 계산된 후보이면서 수동으로 지운 것이 아닌 경우만 표시
-          // 수동으로 지운 후보는 자동 계산에서 제외되지만, 
-          // 나중에 다시 가능해지면 수동 제거 상태를 확인해야 함
-          if (autoCandidates[num - 1]) {
-            // 자동으로 가능한 후보인 경우, 수동으로 지운 것이 아니면 표시
-            newCandidates[r][c][num - 1] = !manuallyRemoved.has(key);
-          } else {
-            // 자동으로 불가능한 후보는 항상 false
-            newCandidates[r][c][num - 1] = false;
-          }
+          newCandidates[r][c][num - 1] = autoCandidates[num - 1] && !manuallyRemoved.has(key);
         }
       } else {
-        // 숫자가 있는 셀은 후보 없음
-        for (let num = 1; num <= 9; num++) {
-          newCandidates[r][c][num - 1] = false;
-        }
+        for (let num = 1; num <= 9; num++) newCandidates[r][c][num - 1] = false;
       }
     }
   }
-  
   return newCandidates;
+}
+
+// 숫자 입력 시 후보만 최소 반영 (전체 재계산 X). 해당 셀 비우기 + 동일 행/열/박스에서 해당 숫자 제거.
+export function applyCandidatesOnSetValue(
+  candidates: CandidateGrid,
+  row: number,
+  col: number,
+  value: number
+): CandidateGrid {
+  const next = copyCandidateGrid(candidates);
+  for (let n = 1; n <= 9; n++) next[row][col][n - 1] = false;
+  const boxR = Math.floor(row / 3) * 3;
+  const boxC = Math.floor(col / 3) * 3;
+  for (let i = 0; i < 9; i++) {
+    next[row][i][value - 1] = false;
+    next[i][col][value - 1] = false;
+    const r = boxR + Math.floor(i / 3);
+    const c = boxC + (i % 3);
+    next[r][c][value - 1] = false;
+  }
+  return next;
+}
+
+// 값 지우기 시 해당 셀 후보만 비움 (새 후보 추가 안 함)
+export function applyCandidatesOnClearValue(
+  candidates: CandidateGrid,
+  row: number,
+  col: number
+): CandidateGrid {
+  const next = copyCandidateGrid(candidates);
+  for (let n = 1; n <= 9; n++) next[row][col][n - 1] = false;
+  return next;
 }

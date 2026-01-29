@@ -7,6 +7,8 @@ interface NumberPadProps {
   selectedNumber: number | null;
   candidateMode: boolean;
   onToggleMode: () => void;
+  onFillAllCandidates?: () => void;
+  disabledNumbers?: Set<number>;
 }
 
 export const NumberPad: React.FC<NumberPadProps> = ({ 
@@ -14,7 +16,9 @@ export const NumberPad: React.FC<NumberPadProps> = ({
   onClear, 
   selectedNumber,
   candidateMode,
-  onToggleMode
+  onToggleMode,
+  onFillAllCandidates,
+  disabledNumbers = new Set(),
 }) => {
   return (
     <div className="number-pad">
@@ -29,12 +33,23 @@ export const NumberPad: React.FC<NumberPadProps> = ({
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
           <button
             key={num}
-            className={`number-button ${selectedNumber === num ? 'selected' : ''}`}
-            onClick={() => onNumberClick(num)}
+            className={`number-button ${selectedNumber === num ? 'selected' : ''} ${disabledNumbers.has(num) ? 'disabled' : ''}`}
+            onClick={() => !disabledNumbers.has(num) && onNumberClick(num)}
+            disabled={disabledNumbers.has(num)}
           >
             {num}
           </button>
         ))}
+        {onFillAllCandidates && (
+          <button
+            type="button"
+            className="number-button fill-all-button"
+            onClick={onFillAllCandidates}
+            title="후보 전부 기입"
+          >
+            전부
+          </button>
+        )}
       </div>
       <div className="number-pad-row">
         <button className="number-button clear-button" onClick={onClear}>

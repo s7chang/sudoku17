@@ -45,6 +45,24 @@
   font-size: 16px;
 }
 
+.number-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: #e0e0e0;
+}
+
+.number-button.disabled:hover {
+  transform: none;
+  background-color: #e0e0e0;
+}
+
+.fill-all-button {
+  width: 50px;
+  height: 50px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .mode-toggle-button {
   width: 50px;
   height: 50px;

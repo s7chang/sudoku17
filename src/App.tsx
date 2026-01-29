@@ -106,6 +106,15 @@ function App() {
     savePuzzleTime(puzzleStartTime);
   }, [puzzleStartTime, savePuzzleTime]);
 
+  // 플레이 중 경과 시간 주기적 저장 (매 초 savedAt 갱신)
+  useEffect(() => {
+    if (puzzleStartTime === null) return;
+    const id = setInterval(() => {
+      savePuzzleTime(puzzleStartTime);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [puzzleStartTime, savePuzzleTime]);
+
   // 캐시 초기화 (알려진 17개 힌트 퍼즐들 추가)
   useEffect(() => {
     try {
@@ -357,9 +366,10 @@ function App() {
           }
         }
 
-        // 완료 시 캐시 비우기
+        // 완료 시 캐시 비우기 및 타이머 초기화
         clearCache(difficulty);
-        savePuzzleTime(null); // 시간 정보도 초기화
+        savePuzzleTime(null);
+        setPuzzleStartTime(null);
 
         const timeStr = formatTime(completionTime);
         setTimeout(() => {
@@ -369,6 +379,7 @@ function App() {
         const completionTime = Date.now() - puzzleStartTime;
         clearCache(difficulty);
         savePuzzleTime(null);
+        setPuzzleStartTime(null);
         const timeStr = formatTime(completionTime);
         setTimeout(() => alert(`축하합니다! 스도쿠를 완성했습니다!\n소요 시간: ${timeStr}`), 100);
       } else {
@@ -536,18 +547,24 @@ function App() {
                 onCellClick={handleCellClick}
                 onCellToggleCandidate={toggleCandidate}
               />
-              <div className="number-pad-wrap">
-                <NumberPad
-                  onNumberClick={handleNumberClick}
-                  onClear={handleClear}
-                  selectedNumber={selectedNumber}
-                  candidateMode={candidateMode}
-                  onToggleMode={() => setCandidateMode(!candidateMode)}
-                />
-                <button className="fill-candidates-button" onClick={fillAllCandidates}>
-                  후보 전부 기입
-                </button>
-              </div>
+              <NumberPad
+                onNumberClick={handleNumberClick}
+                onClear={handleClear}
+                selectedNumber={selectedNumber}
+                candidateMode={candidateMode}
+                onToggleMode={() => setCandidateMode(!candidateMode)}
+                onFillAllCandidates={fillAllCandidates}
+                disabledNumbers={(() => {
+                  const g = state.currentGrid;
+                  const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+                  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+                    const v = g[r][c]; if (v >= 1 && v <= 9) counts[v - 1]++;
+                  }
+                  const s = new Set<number>();
+                  for (let n = 1; n <= 9; n++) if (counts[n - 1] === 9) s.add(n);
+                  return s;
+                })()}
+              />
               {selectedNumber ? (
                 <div className="candidate-mode-hint">
                   {candidateMode ? `후보 ${selectedNumber}` : `숫자 ${selectedNumber}`} 선택됨 —

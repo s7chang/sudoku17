@@ -6,7 +6,9 @@ import {
   copyGrid,
   createCandidateGrid,
   calculateAllCandidates,
-  copyCandidateGrid
+  copyCandidateGrid,
+  applyCandidatesOnSetValue,
+  applyCandidatesOnClearValue,
 } from '../utils/sudoku';
 import { GameState, GameAction, HistoryState } from '../types/game';
 
@@ -116,14 +118,13 @@ export function useGameState(initialGrid?: Grid) {
             newManuallyRemoved.delete(key);
           }
           
-          // 후보 자동 계산
-          const newCandidates = calculateAllCandidates(
-            newGrid,
+          const newCandidates = applyCandidatesOnSetValue(
             prev.candidates,
-            newManuallyRemoved
+            row,
+            col,
+            value
           );
           
-          // 히스토리 업데이트 (현재 인덱스 이후는 삭제)
           const newHistory = prev.history.slice(0, prev.historyIndex + 1);
           newHistory.push({
             grid: copyGrid(newGrid),
@@ -157,14 +158,8 @@ export function useGameState(initialGrid?: Grid) {
           const newGrid = copyGrid(prev.currentGrid);
           newGrid[row][col] = 0;
           
-          // 후보 자동 계산 (수동으로 지운 후보 정보는 유지)
-          const newCandidates = calculateAllCandidates(
-            newGrid,
-            prev.candidates,
-            prev.manuallyRemovedCandidates
-          );
+          const newCandidates = applyCandidatesOnClearValue(prev.candidates, row, col);
           
-          // 히스토리 업데이트
           const newHistory = prev.history.slice(0, prev.historyIndex + 1);
           newHistory.push({
             grid: copyGrid(newGrid),
