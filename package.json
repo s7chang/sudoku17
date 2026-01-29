@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "measure-difficulty": "npx tsx scripts/measureDifficulty.ts",
+    "measure-forcing-chain": "npx tsx scripts/measureForcingChain.ts",
+    "measure-difficulty-and-depth": "npx tsx scripts/measureDifficultyAndDepth.ts"
   },
   "dependencies": {
     "react": "^18.2.0",

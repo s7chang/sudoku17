@@ -27,3 +27,6 @@ Thumbs.db
 # Misc
 *.local
 .cache/
+difficulty-results.json
+forcing-chain-results.json
+difficulty-and-depth-results.json
